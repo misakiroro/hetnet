@@ -1,0 +1,39 @@
+1.工程目录结构
+hetnet_pro
+   .
+   ...dpdk-stable-17.05.1     该文件夹为dpdk工程目录
+   .
+   ...hetnet		       自建异构网络工程目录(github中只含有这个文件夹)
+	.
+	...main.c	代码源文件，目前只有main.c
+	.
+	...Makefile     makefile文件	
+	.
+	.build          build为编译生成文件，里面含有可执行文件hetnet
+	    .
+	    ...hetnet    可执行文件hetnet
+	    .
+	    .
+github中只有hetnet这个文件夹，需要按照上面的结构搭建工程，可以理解为把hetnet和dpdk库文件的工程
+放在同一个文件夹中
+
+2.配置dpdk环境
+(1)切换到dpdk-stable-17.05.1/usertools目录运行dpdk-setup.sh
+(2)按照提示选择[12]x86_64-native-linuxapp-gcc编译库文件
+(3)选择[15]Insert IGB UIO module加载igbuio模块
+(4)虚拟机选择[18] Setup hugepage mappings for non-NUMA systems加载巨页
+   巨页大小暂定512M
+(5)选择[20] Display current Ethernet/Crypto device settings查看网卡信息
+(6)选择[21] Bind Ethernet/Crypto device to IGB UIO module绑定需要的网卡
+   在绑定网卡之间需要另开一个命令行窗口将网卡down下来
+   命令为$sudo ifconfig eth0 down   这里的eth0根据网卡信息有所不同
+(7)配置成功可以运行例程，不成功可以参考另一个word文档
+
+3.编译命令
+目前第一版参考l2fwd二层转发例程搭建，如果工程结构按照上文搭建
+目前只需要$make
+然后$sudo ./build/l2fwd -l 0-3 -n 4
+运行即可
+
+之后需要根据情况往执行命令后面添加参数
+
