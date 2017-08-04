@@ -1,34 +1,34 @@
 #include "network.h"
 
-int udp_packaging(struct rte_mbuf *m,PUDP_HEADER udphdr)
+int udp_packaging(struct rte_mbuf *m,PSOCKET_ADDR sock)
 {
-	m->pkt.data=rte_pktmbuf_prepend(m,sizeof(UDP_HEADER));
+	m->pkt.data=rte_pktmbuf_prepend(m,sizeof(sock->udphdr));
 	if(m->pkt.data==NULL)
 		return -1;
-    udphdr=(PUDP_HEADER)m->pkt.data;
+    sock->udphdr=(PUDP_HEADER)m->pkt.data;
     return 0;
 }
 
-int ip_packaging(struct rte_mbuf *m,PIP_HEADER iphdr)
+int ip_packaging(struct rte_mbuf *m,PSOCKET_ADDR sock)
 {
-	m->pkt.data=rte_pktmbuf_prepend(m,sizeof(IP_HEADER));
+	m->pkt.data=rte_pktmbuf_prepend(m,sizeof(sock->iphdr));
 	if(m->pkt.data==NULL)
 		return -1;
-    iphdr=(PIP_HEADER)m->pkt.data;
+    sock->iphdr=(PIP_HEADER)m->pkt.data;
     return 0;
 }
 
-int mac_packaging(struct rte_mbuf *m, PMAC_HEADER machdr,PMAC_TAIL mactail)
+int mac_packaging(struct rte_mbuf *m, PSOCKET_ADDR sock)
 {
-	m->pkt.data=rte_pktmbuf_prepend(m,sizeof(MAC_HEADER));
+	m->pkt.data=rte_pktmbuf_prepend(m,sizeof(sock->machdr));
 	if(m->pkt.data==NULL)
 		return -1;
-    machdr=(PMAC_HEADER)m->pkt.data;
+    sock->machdr=(PMAC_HEADER)m->pkt.data;
     char *m_tail;
-    m_tail=rte_pktmbuf_append(m,sizeof(MAC_TAIL));
+    m_tail=rte_pktmbuf_append(m,sizeof(sock->mactail));
     if(m_tail==NULL)
     	return -1;
-    mactail=(PMAC_TAIL)m_tail;
+    sock->mactail=(PMAC_TAIL)m_tail;
     return 0;
 }
 
@@ -123,9 +123,9 @@ int pack_receive(struct rte_mbuf **m,int portid)
     return 0;
 }
 
-int mac_unpackaing(struct rte_mbuf *m,PMAC_HEADER mac_hdr,PMAC_TAIL mac_tail)
+int mac_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock)
 {
-	mac_hdr=(PMAC_HEADER)m->pkt.data;
+	sock->machdr=(PMAC_HEADER)m->pkt.data;
 	m->pkt.data=rte_pktmbuf_adj(m,sizeof(MAC_HEADER));
 	if(m->pkt.data==NULL)
 		return -1;
@@ -135,18 +135,18 @@ int mac_unpackaing(struct rte_mbuf *m,PMAC_HEADER mac_hdr,PMAC_TAIL mac_tail)
 		return -1;
 }
 
-int ip_unpackaing(struct rte_mbuf *m,PIP_HEADER ip_hdr)
+int ip_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock)
 {
-	ip_hdr=(PIP_HEADER)m->pkt.data;
+	sock->iphdr=(PIP_HEADER)m->pkt.data;
 	m->pkt.data=rte_pktmbuf_adj(m,sizeof(IP_HEADER));
 	if(m->pkt.data==NULL)
 		return -1;
 	return 0;
 }
 
-int udp_unpackaing(struct rte_mbuf *m,PUDP_HEADER udp_hdr)
+int udp_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock)
 {
-	udp_hdr=(PUDP_HEADER)m->pkt.data;
+	sock->udphdr=(PUDP_HEADER)m->pkt.data;
 	m->pkt.data=rte_pktmbuf_adj(m,sizeof(UDP_HEADER));
 	if(m->pkt.data==NULL)
 		return -1;
@@ -209,25 +209,25 @@ int business_pack_process(struct rte_mbuf *m)
     	printf("Create ack_pack failed");
     	return -1;
     }
-    PUDP_HEADER udphdr;
+    PSOCKET_ADDR sock;
     //modified udp header
-    if(udp_packaging(m,udphdr)==-1)
+    if(udp_packaging(m,sock)==-1)
     {
     	printf("Add udp header failed");
     	return -1;
     }
-    PIP_HEADER iphdr;
+    
     //modified ip header
-    if(ip_packaging(m,iphdr)==-1)
+    if(ip_packaging(m,sock)==-1)
     {
     	printf("Add ip header failed");
     	return -1;
     }
-    PMAC_HEADER machdr;
+   
     //modified mac header
-    PMAC_TAIL mactail;
+    
     //modified mac tailer;
-    if(mac_packaging(m,machdr,mactail)==-1)
+    if(mac_packaging(m,sock)==-1)
     {
         printf("Add mac failed");
         return -1;
@@ -317,29 +317,31 @@ int seek_pack_process(struct rte_mbuf *m,int portid)
     	printf("Create reply_pack failed");
     	return -1;
     }
-    PUDP_HEADER udphdr;
+
+    PSOCKET_ADDR sock;
     //modified udp header
-    if(udp_packaging(m,udphdr)==-1)
+    if(udp_packaging(m,sock)==-1)
     {
     	printf("Add udp header failed");
     	return -1;
     }
-    PIP_HEADER iphdr;
+
     //modified ip header
-    if(ip_packaging(m,iphdr)==-1)
+    if(ip_packaging(m,sock)==-1)
     {
     	printf("Add ip header failed");
     	return -1;
     }
-    PMAC_HEADER machdr;
+    
     //modified mac header
-    PMAC_TAIL mactail;
+   
     //modified mac tailer;
-    if(mac_packaging(m,machdr,mactail)==-1)
+    if(mac_packaging(m,sock)==-1)
     {
         printf("Add mac failed");
         return -1;
     }
+    
     if(pack_send(m,portid)==-1)
     {
     	printf("Send reply_pack failed");

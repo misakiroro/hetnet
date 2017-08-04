@@ -1,5 +1,13 @@
-//异构网络编程接口
+/*异构网络编程接口
 //1.	帧结构
+1.  Socket 结构体*/
+typedef struct _socket_addr{
+PMAC_HEADER machdr;                          //MAC头结构体指针
+PMAC_TAIL    mactail;                        //MAC尾结构体指针
+PIP_HEADER   iphdr;                          //IP头结构体指针
+PUDP_HEADER udphdr;                          //UDP头结构体指针
+}SOCKET_ADDR,*PSOCKET_ADDR;
+
 //1.1 MAC帧头结构体
 typedef struct _mac_hdr{
 unsigned char SourceMacAddr[6];               //6字节，源MAC地址
@@ -130,6 +138,17 @@ unsigned int seek_pack_time[NET_ID_MAX][SEEK_MAX_NUM];
 unsigned int reply_pack_time[NET_ID_MAX][SEEK_MAX_NUM];
 }TRAN_STATUS;
 
+enum Type{
+    Data_Package;
+    Data_And_Ack_Package;
+    Ack_Package;
+    Reset_Package;
+    Seek_Package;
+    Reply_Package;
+    Arp_Request_Package;
+    Arp_Reply_Package;
+}
+
 static struct rte_mbuf *frag[MAXSIZE];            //建立用于分片数组段重组的数组
 static struct rte_mbuf *sendwindow[MAXSIZE];      //发送端发送窗口
 static struct rte_mbuf *recvwindow[MAXSIZE];      //接收端接收窗口
@@ -138,37 +157,35 @@ static struct rte_mbuf *recvwindow[MAXSIZE];      //接收端接收窗口
   2.1添加UDP头
  * @param m
  *   传入的要封装的mbuf
- * @param udphdr
- *   传入的对应mbuf的UDP头部
+ * @param sock
+ *   传入的对应mbuf的socket
  * @return
  *   0 ：成功 
      -1：失败
  */
-int udp_packaging(struct rte_mbuf *m,PUDP_HEADER udphdr);
+int udp_packaging(struct rte_mbuf *m,PSOCKET_ADDR sock);
    
 /*2.2添加IP头
  * @param m
  *   传入的要封装的mbuf
- * @param iphdr
- *   传入的对应mbuf的IP头部
+ * @param sock
+ *   传入的对应mbuf的socket
  * @return
  *   0 ：成功 
      -1：失败
  */
-int ip_packaging(struct rte_mbuf *m,PIP_HEADER iphdr);
+int ip_packaging(struct rte_mbuf *m,PSOCKET_ADDR sock);
 
 /*2.3添加MAC头
  *  @param m
  *   传入的要封装的mbuf
- * @param machdr
- *   传入的对应mbuf的MAC头部
- * @param mactail
- *   传入的对应mbuf的MAC尾部
+ * @param sock
+ *   传入的对应mbuf的socket
  * @return
  *   0 ：成功 
      -1：失败
  */
-int mac_packaging(struct rte_mbuf *m, PMAC_HEADER machdr,PMAC_TAIL mactail);
+int mac_packaging(struct rte_mbuf *m, PSOCKET_ADDR sock);
 
 /*2.4构造数据帧函数
   2.4.1构造业务数据包函数
@@ -278,37 +295,35 @@ int pack_send(struct rte_mbuf *m,int portid);
 /*3.2除去MAC头函数
  * @param m
  *   传入的要处理的mbuf
- * @param mac_hdr
- *   传入的存储MAC帧头信息的结构体指针
- * @param mac_tail
- *   传入的存储MAC帧尾信息的结构体指针
+ * @param sock
+ *   传入的存储MAC帧头帧尾信息的socket结构体指针
  * @return
  *   0 ：成功 
      -1：失败
  */
-int mac_unpackaing(struct rte_mbuf *m,PMAC_HEADER mac_hdr,PMAC_TAIL mac_tail);
+int mac_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock);
 
 /*3.3除去IP头函数
  * @param m
  *   传入的要处理的mbuf
- * @param ip_hdr
- *   传入的存储IP帧头信息的结构体指针
+ * @param sock
+ *   传入的存储IP帧头信息的socket结构体指针
  * @return
  *   0 ：成功 
      -1：失败
  */
-int ip_unpackaing(struct rte_mbuf *m,PIP_HEADER ip_hdr);
+int ip_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock);
 
 /*3.4除去UDP头函数
  * @param m
  *   传入的要处理的mbuf
- * @param udp_hdr
- *   传入的存储UDP帧头信息的结构体指针
+ * @param sock
+ *   传入的存储UDP帧头信息的socket结构体指针
  * @return
  *    0 ：成功 
       -1：失败
  */
-int udp_unpackaing(struct rte_mbuf *m,PUDP_HEADER udp_hdr);
+int udp_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock);
 
 /*3.5帧分类函数
  * @param m
