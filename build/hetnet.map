@@ -10050,37 +10050,29 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/5/../../../x86_64-linux-gnu/crtn.o
 .debug_sfnames
  *(.debug_sfnames)
 
-.debug_aranges  0x0000000000000000       0x40
+.debug_aranges
  *(.debug_aranges)
- .debug_aranges
-                0x0000000000000000       0x40 main.o
 
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x0000000000000000     0x45d0
+.debug_info
  *(.debug_info .gnu.linkonce.wi.*)
- .debug_info    0x0000000000000000     0x45d0 main.o
 
-.debug_abbrev   0x0000000000000000      0x4d9
+.debug_abbrev
  *(.debug_abbrev)
- .debug_abbrev  0x0000000000000000      0x4d9 main.o
 
-.debug_line     0x0000000000000000      0x577
+.debug_line
  *(.debug_line .debug_line.* .debug_line_end)
- .debug_line    0x0000000000000000      0x577 main.o
 
 .debug_frame
  *(.debug_frame)
 
-.debug_str      0x0000000000000000     0x2f60
+.debug_str
  *(.debug_str)
- .debug_str     0x0000000000000000     0x2f60 main.o
-                                       0x3352 (松开之前的大小)
 
-.debug_loc      0x0000000000000000      0x889
+.debug_loc
  *(.debug_loc)
- .debug_loc     0x0000000000000000      0x889 main.o
 
 .debug_macinfo
  *(.debug_macinfo)
@@ -10100,9 +10092,8 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/5/../../../x86_64-linux-gnu/crtn.o
 .debug_pubtypes
  *(.debug_pubtypes)
 
-.debug_ranges   0x0000000000000000       0xf0
+.debug_ranges
  *(.debug_ranges)
- .debug_ranges  0x0000000000000000       0xf0 main.o
 
 .debug_macro
  *(.debug_macro)
