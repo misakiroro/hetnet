@@ -126,16 +126,16 @@ unsigned char SourceMacAddr[6];            //6字节，发送端MAC地址
 unsigned int SourceIPAddr;                 //4字节，发送端IP地址
 unsigned char DestMacAddr[6];              //6字节，目的端MAC地址
 unsigned int DsetIPAddr;                   //4字节，目的端IP地址
-}ARP_PACK;
+}ARP_PACK,*PARP_PACK;
 
 //1.6.4 链路状态和时延结构体
 typedef struct _transline_status{
 bool state[NET_ID_MAX];
-unsigned int delay[NET_ID_MAX];
+double delay[NET_ID_MAX];
 bool seek_pack_state[NET_ID_MAX][SEEK_MAX_NUM];
 bool reply_pack_state[NET_ID_MAX][SEEK_MAX_NUM];
-unsigned int seek_pack_time[NET_ID_MAX][SEEK_MAX_NUM];
-unsigned int reply_pack_time[NET_ID_MAX][SEEK_MAX_NUM];
+double seek_pack_time[NET_ID_MAX][SEEK_MAX_NUM];
+double reply_pack_time[NET_ID_MAX][SEEK_MAX_NUM];
 }TRAN_STATUS;
 
 enum Type{
@@ -329,10 +329,9 @@ int udp_unpackaing(struct rte_mbuf *m,PSOCKET_ADDR sock);
  * @param m
  *   传入的要分类的mbuf
  * @return
- *    0： 成功
-     -1:  错误
+ *    Type:包类型
  */
-int frame_classfied(struct rte_mbuf *m);
+unsigned char pack_classfied(struct rte_mbuf *m);
 
 /*3.6接收数据帧处理函数
 3.6.1接收业务数据包处理函数
@@ -375,21 +374,47 @@ int reset_pack_process(struct rte_mbuf *m);
 3.7.1接收链路探测包处理函数
  * @param m
  *   传入的要处理的链路探测包mbuf
+ * @param portid
+ *   传入的要发送链路响应包的端口号
  * @return
  *   0 ：处理成功 
-     -1:  处理失败
+     -1: 处理失败
  */
-int seek_pack_process(struct rte_mbuf *m);
+int seek_pack_process(struct rte_mbuf *m,int portid);
 
 /*3.7.2接收链路响应包处理函数
  * @param m
  *   传入的要处理的链路响应包mbuf
+ * @param portid
+ *   传入的要更新时延的端口号
  * @return
  *   0 ：处理成功 
-     -1:  处理失败
+ *   -1: 处理失败
  */
-int reply_pack_process(struct rte_mbuf *m);
-/* @param old_time
+int reply_pack_process(struct rte_mbuf *m,int portid);
+
+/*3.7.3接收ARP请求包处理函数
+ * @param m
+ *   传入的要处理的ARP请求包mbuf
+ * @param portid
+ *   传入的发送ARP响应包的端口号
+ * @return
+ *   0 ：处理成功 
+     -1: 处理失败
+ */
+int arp_acque_process(struct rte_mbuf *m,int portid);
+
+/*3.7.4接收ARP响应包处理函数
+ * @param m
+ *   传入的要处理的ARP响应包mbuf
+ * @return
+ *   0 ：处理成功 
+     -1: 处理失败
+ */
+int arp_reply_process(struct rte_mbuf *m);
+
+/*3.7.5线路时延计算函数
+   @param old_time
  *   传入发送链路探测包时记录的时间
  * @param new_time
  *   传入收到链路响应包时记录的时间
@@ -398,22 +423,4 @@ int reply_pack_process(struct rte_mbuf *m);
  * @return
  *   new_delay:算法算出的SRTT
  */
-inline unsigned int new_delay_time(unsigned int old_time,unsigned int new_time,int portid)
-
-/*3.7.3接收ARP请求包处理函数
- * @param m
- *   传入的要处理的ARP请求包mbuf
- * @return
- *   0 ：处理成功 
-     -1:  处理失败
- */
-int arp_acque_process(struct rte_mbuf *m);
-
-/*3.7.4接收ARP响应包处理函数
- * @param m
- *   传入的要处理的ARP响应包mbuf
- * @return
- *   0 ：处理成功 
-     -1:  处理失败
- */
-int arp_reply_process(struct rte_mbuf *m);
+ double new_delay_time(double old_time,double new_time,int portid);
