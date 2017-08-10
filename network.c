@@ -91,7 +91,7 @@ int arp_packaing(struct rte_mbuf *m,ARP_PACK arp_pack)
 int pack_send(struct rte_mbuf *m,int portid)
 {
 	struct rte_eth_dev_tx_buffer *buffer;
-	if(rte_eth_tx_buffer(port, 0, buffer, m)==0)   //send one pack once
+	if(rte_eth_tx_buffer(port, 0, buffer, m)==0)   //一次发送一个mbuf到buffer
     	   return -1;
     return 0;
 }
@@ -99,7 +99,7 @@ int pack_send(struct rte_mbuf *m,int portid)
 int transport_selection()
 {
     int n;
-    int mindelay=0;
+    double mindelay=0;
     for(int i=0;i<NET_ID_MAX;i++)
     {
         if(tran_status.state[i]==false)
@@ -118,7 +118,7 @@ int transport_selection()
 
 int pack_receive(struct rte_mbuf **m,int portid)
 {
-    if(rte_eth_rx_burst(portid,0,m,MAXSIZE)<=0)       //receive MAXSIZE pack once
+    if(rte_eth_rx_burst(portid,0,m,MAXSIZE)<=0)       //一次接收MAXSIZE的mbuf
     	return -1;
     return 0;
 }
@@ -157,7 +157,6 @@ unsigned char pack_classfied(struct rte_mbuf *m)
 {
 	char *type;
     type=(char *)m->pkt.data;
-    m->pkt.data=rte_pktmbuf_adj(m,sizeof(char));
     if(m->pkt.data==NULL)
     	return -1;
     return (*type);
@@ -210,30 +209,30 @@ int business_pack_process(struct rte_mbuf *m)
     	return -1;
     }
     PSOCKET_ADDR sock;
-    //modified udp header
+    //添加UDP头部
     if(udp_packaging(m,sock)==-1)
     {
     	printf("Add udp header failed");
     	return -1;
     }
     
-    //modified ip header
+    //添加IP头部
     if(ip_packaging(m,sock)==-1)
     {
     	printf("Add ip header failed");
     	return -1;
     }
    
-    //modified mac header
+    //添加MAC头部
     
-    //modified mac tailer;
+    //添加MAC尾部
     if(mac_packaging(m,sock)==-1)
     {
         printf("Add mac failed");
         return -1;
     }
     int port;
-    port=transport_selection(T,NUM);
+    port=transport_selection();
     if(pack_send(m,port)==-1)
     {
     	printf("Send package failed");
@@ -294,7 +293,7 @@ int business_and_ack_process(struct rte_mbuf *m)
 }
 
 int reset_pack_process(struct rte_mbuf *m)
-
+//处理复位包
 
 int seek_pack_process(struct rte_mbuf *m,int portid)
 {
@@ -361,8 +360,8 @@ int reply_pack_process(struct rte_mbuf *m,int portid)
     num=(unsigned short *)m->pkt.data;
     m->pkt.data=rte_pktmbuf_adj(m,sizeof(unsigned short));
 
-    tran_status.reply_pack_time[portid][*num]=jiffies_to_msecs(jiffies);
-    tran_status.delay[portid]=new_delay_time(tran_status.send_pack_time[portid][*num],tran_status.reply_pack_time[portid][*num]);
+    tran_status.reply_pack_time[portid][*num]=//记录当前系统时间
+    tran_status.delay[portid]=new_delay_time(tran_status.send_pack_time[portid][*num],tran_status.reply_pack_time[portid][*num],portid);
     if(tran_status.state[portid]==false)
     	tran_status.state[portid]==true;
     tran_status.reply_pack_state[portid][*num]=true;
@@ -372,4 +371,58 @@ int reply_pack_process(struct rte_mbuf *m,int portid)
     		tran_status.reply_pack_state[portid][i]==true;
     }
     return 0;
+}
+
+double new_delay_time(double old_time,double new_time,int portid)
+{
+    if((new_time-old_time)<MAX_TIME)
+        tran_status.delay[portid]=tran_status.delay[portid]*0.8+(new_time-old_time)*0.2;
+    else
+    	tran_status.delay[portid]=tran_status.delay[portid]*0.8+MAX_TIME*0.2;
+    return tran_status.delay[portid];
+}
+
+int arp_acque_process(struct rte_mbuf *m,int portid)
+{
+    PARP_PACK arp_pack;
+    arp_pack=(PARP_PACK)m->pkt.data;
+    m->pkt.data=rte_pktmbuf_adj(m,sizeof(ARP_PACK));
+
+    mac_addr//获取当前MAC地址mac_addr
+    if(arp_pack->DestMacAddr[6]==mac_addr)
+    {
+    	struct rte_mbuf *n;
+        ARP_PACK arp_reply_pack;
+        //填充ARP响应包
+        if(arp_packaing(n,arp_reply_pack)==-1)
+        {
+        	printf("Packaing arp_reply_pack failed!");
+        	return -1
+        }
+        
+        PSOCKET_ADDR sock;
+        //填充MAC头部
+
+        if(mac_packaging(n,sock)==-1)
+        {
+        	printf("Packaing mac_header failed!");
+        	return -1;
+        }
+
+        if(pack_send(n,portid)==-1)
+        {
+        	printf("Send package failed!");
+        	return -1;
+        }
+        return 0;
+    }
+}
+
+int arp_reply_process(struct rte_mbuf *m)
+{
+	PARP_PACK arp_pack;
+	arp_pack=(PARP_PACK)m->pkt.data;
+    m->pkt.data=rte_pktmbuf_adj(m,sizeof(ARP_PACK));
+
+    //更新ARP缓存表
 }

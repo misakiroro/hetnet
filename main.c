@@ -49,8 +49,9 @@
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
-#define set_tsc
-#define NET_ID_MAX
+#define SET_TSC                                  //定义的链路探测包发送周期
+#define NET_ID_MAX                               //最大线路ID数
+#define MAX_TIME                                 //链路探测包往返最大计算时延
 
 static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
@@ -189,30 +190,27 @@ data_pack_send_launch_one_lcore(__attribute__((unused)) void *dummy)
 static int
 recv_pack_process(struct rte_mbuf*m,int portid)
 {
-	PMAC_HEADER machdr;
-	PMAC_TAIL   mactail;
-    if(mac_unpackaging(m,machdr,mactail)==-1)
+	PSOCKET_ADDR sock;
+    if(mac_unpackaging(m,sock)==-1)
     {
     	printf("unpackaing mac failed");
     	return -1;
     }
-    //confirm mac
+    //确认MAC头部信息
 
-    PIP_HEADER iphdr;
-    if(ip_unpackaging(m,iphdr)==-1)
+    if(ip_unpackaging(m,sock)==-1)
     {
     	printf("unpackaing iphdr failed");
     	return -1;
     }
-    //confirm iphdr
+    //确认IP头部信息
 
-    PUDP_HEADER udphdr;
-    if(udp_unpackaging(m,udphdr)==-1)
+    if(udp_unpackaging(m,sock)==-1)
     {
     	printf("unpackaing udphdr failed");
     	return -1;
     }
-    //confirm udphdr
+    //确认UDP头部信息
     
     char type=pack_classfied(m);
 
@@ -225,11 +223,11 @@ recv_pack_process(struct rte_mbuf*m,int portid)
     	                
     	case Reset_Package:reset_pack_process(m); break;
     	                  
-        case Seek_Package:seek_pack_process(m); break;
+        case Seek_Package:seek_pack_process(m,portid); break;
 
-        case Reply_Package:reply_pack_process(m); break;
+        case Reply_Package:reply_pack_process(m,portid); break;
 
-        case Arp_Request_Package:arp_acque_process(m); break;
+        case Arp_Request_Package:arp_acque_process(m,portid); break;
 
         case Arp_Reply_Package:arp_reply_process(m); break;
 
@@ -279,9 +277,7 @@ pack_receive_loop(void)
 
 		    }
 		}
-
 	}
-
 }
 
 static int
@@ -299,7 +295,7 @@ seek_pack_send_loop(void)
     {
     	cur_tsc = rte_rdtsc();
     	diff_tsc = cur_tsc - prev_tsc;
-    	if(diff_tsc==set_tsc)
+    	if(diff_tsc==SET_TSC)//定时发送链路探测包
     	{
     		for(int i=0;i<NET_ID_MAX;i++)
     		{
@@ -316,7 +312,7 @@ seek_pack_send_loop(void)
                {
                	   seq_num++;
                	   tran_status.seek_pack_state[i][seq_num]=true;
-               	   tran_status.seek_pack_time[i][seq_num]=jiffies_to_msecs(jiffies);
+               	   tran_status.seek_pack_time[i][seq_num]=//获取当前时间;
                }
     		}
     		prev_tsc=cur_tsc;
@@ -328,6 +324,47 @@ static int
 seek_pack_send_launch_one_lcore(__attribute__((unused)) void *dummy)
 {
 	seek_pack_send_loop();
+	return 0;
+}
+
+static void
+trans_line_check_loop(void)
+{
+	unsigned int count;
+	while(!force_quit)
+	{
+		cur_tsc=rte_rdtsc();
+		diff_tsc=cur_tsc-prev_tsc;
+		if(diff_tsc==SET_TSC)
+		{
+			for(int i=0;i<NET_ID_MAX;i++)
+			{
+				count=0;
+				for(int j=0;tran_status.seek_pack_state[i][j]!=false;j++)
+					count++;
+				for(int j=0;j<count-4;j++)
+				{
+					if(tran_status.reply_pack_state[i][j]==false)
+					{
+						//等待一定时延，判断接下来四个链路响应包状态
+						if(tran_status.reply_pack_state[i][j]==false&&
+						tran_status.reply_pack_state[i][j+1]==false&&
+						tran_status.reply_pack_state[i][j+2]==false&&
+						tran_status.reply_pack_state[i][j+3]==false&&
+						tran_status.reply_pack_state[i][j+4]==false)
+							tran_status.state[i]=false;
+					}
+				}
+			}
+		prev_tsc=cur_tsc;
+		}
+	}
+}
+
+static int
+trans_line_check_launch_one_lcore(__attribute__((unused)) void *dummy)
+{
+	trans_line_check_loop();
 	return 0;
 }
 
@@ -476,6 +513,7 @@ main(int argc, char **argv)
 	rte_eal_remote_launch(data_pack_send_launch_one_lcore, NULL, 1);
 	rte_eal_remote_launch(pack_receive_launch_one_lcore, NULL, 2);
 	rte_eal_remote_launch(seek_pack_send_launch_one_lcore, NULL, 3);
+	rte_eal_remote_launch(trans_line_check_launch_one_lcore, NULL, 4);
 	rte_eal_mp_wait_lcore();
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
